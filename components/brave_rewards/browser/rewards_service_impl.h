@@ -107,6 +107,9 @@ class RewardsServiceImpl : public RewardsService,
   unsigned int GetPublisherMinVisits() const override;
   bool GetPublisherAllowNonVerified() const override;
   bool GetPublisherAllowVideos() const override;
+  void LoadPublisherInfo(
+      const std::string& publisher_key,
+      ledger::PublisherInfoCallback callback) override;
   void LoadMediaPublisherInfo(
       const std::string& media_key,
       ledger::PublisherInfoCallback callback) override;
@@ -162,9 +165,11 @@ class RewardsServiceImpl : public RewardsService,
   void OnPublisherInfoSaved(ledger::PublisherInfoCallback callback,
                             std::unique_ptr<ledger::PublisherInfo> info,
                             bool success);
-  void OnPublisherInfoLoaded(ledger::PublisherInfoCallback callback,
+  void OnActivityInfoLoaded(ledger::PublisherInfoCallback callback,
                              const ledger::PublisherInfoList list);
   void OnMediaPublisherInfoSaved(bool success);
+  void OnPublisherInfoLoaded(ledger::PublisherInfoCallback callback,
+                             std::unique_ptr<ledger::PublisherInfo> info);
   void OnMediaPublisherInfoLoaded(ledger::PublisherInfoCallback callback,
                              std::unique_ptr<ledger::PublisherInfo> info);
   void OnPublisherInfoListLoaded(uint32_t start,
@@ -221,7 +226,7 @@ class RewardsServiceImpl : public RewardsService,
 
   void SavePublisherInfo(std::unique_ptr<ledger::PublisherInfo> publisher_info,
                          ledger::PublisherInfoCallback callback) override;
-  void LoadPublisherInfo(ledger::PublisherInfoFilter filter,
+  void LoadActivityInfo(ledger::PublisherInfoFilter filter,
                          ledger::PublisherInfoCallback callback) override;
   void LoadPublisherInfoList(
       uint32_t start,

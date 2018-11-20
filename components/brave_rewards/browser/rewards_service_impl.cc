@@ -229,7 +229,7 @@ bool SaveActivityInfoOnFileTaskRunner(
   return false;
 }
 
-ledger::PublisherInfoList GetPublisherActivityListOnFileTaskRunner(
+ledger::PublisherInfoList GetActivityListOnFileTaskRunner(
     uint32_t start,
     uint32_t limit,
     ledger::ActivityInfoFilter filter,
@@ -238,7 +238,7 @@ ledger::PublisherInfoList GetPublisherActivityListOnFileTaskRunner(
   if (!backend)
     return list;
 
-  ignore_result(backend->GetPublisherActivityList(start, limit, filter, &list));
+  ignore_result(backend->GetActivityList(start, limit, filter, &list));
   return list;
 }
 
@@ -378,7 +378,7 @@ void RewardsServiceImpl::GetContentSiteList(
   filter.excluded =
     ledger::EXCLUDE_FILTER::FILTER_ALL_EXCEPT_EXCLUDED;
 
-  ledger_->GetPublisherInfoList(start, limit,
+  ledger_->GetActivityInfoList(start, limit,
       filter,
       std::bind(&GetContentSiteListInternal,
                 start,
@@ -834,7 +834,7 @@ void RewardsServiceImpl::LoadActivityInfo(
     ledger::ActivityInfoFilter filter,
     ledger::PublisherInfoCallback callback) {
   base::PostTaskAndReplyWithResult(file_task_runner_.get(), FROM_HERE,
-      base::Bind(&GetPublisherActivityListOnFileTaskRunner,
+      base::Bind(&GetActivityListOnFileTaskRunner,
           // set limit to 2 to make sure there is
           // only 1 valid result for the filter
           0, 2, filter, publisher_info_backend_.get()),
@@ -860,7 +860,7 @@ void RewardsServiceImpl::OnActivityInfoLoaded(
       std::make_unique<ledger::PublisherInfo>(list[0]));
 }
 
-void RewardsServiceImpl::LoadPublisherInfoList(
+void RewardsServiceImpl::LoadActivityInfoList(
     uint32_t start,
     uint32_t limit,
     ledger::ActivityInfoFilter filter,
@@ -871,7 +871,7 @@ void RewardsServiceImpl::LoadPublisherInfoList(
   filter.reconcile_stamp = ledger_->GetReconcileStamp();
 
   base::PostTaskAndReplyWithResult(file_task_runner_.get(), FROM_HERE,
-      base::Bind(&GetPublisherActivityListOnFileTaskRunner,
+      base::Bind(&GetActivityListOnFileTaskRunner,
                     start, limit, filter,
                     publisher_info_backend_.get()),
       base::Bind(&RewardsServiceImpl::OnPublisherInfoListLoaded,
@@ -887,7 +887,7 @@ void RewardsServiceImpl::LoadCurrentPublisherInfoList(
     ledger::ActivityInfoFilter filter,
     ledger::PublisherInfoListCallback callback) {
   base::PostTaskAndReplyWithResult(file_task_runner_.get(), FROM_HERE,
-      base::Bind(&GetPublisherActivityListOnFileTaskRunner,
+      base::Bind(&GetActivityListOnFileTaskRunner,
                     start, limit, filter,
                     publisher_info_backend_.get()),
       base::Bind(&RewardsServiceImpl::OnPublisherInfoListLoaded,

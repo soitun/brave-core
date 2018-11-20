@@ -126,10 +126,10 @@ class LedgerURLLoaderImpl : public ledger::LedgerURLLoader {
   net::URLFetcher* fetcher_;  // NOT OWNED
 };
 
-ledger::PUBLISHER_MONTH GetPublisherMonth(const base::Time& time) {
+ledger::ACTIVITY_MONTH GetPublisherMonth(const base::Time& time) {
   base::Time::Exploded exploded;
   time.LocalExplode(&exploded);
-  return (ledger::PUBLISHER_MONTH)exploded.month;
+  return (ledger::ACTIVITY_MONTH)exploded.month;
 }
 
 int GetPublisherYear(const base::Time& time) {
@@ -232,7 +232,7 @@ bool SaveActivityInfoOnFileTaskRunner(
 ledger::PublisherInfoList GetPublisherActivityListOnFileTaskRunner(
     uint32_t start,
     uint32_t limit,
-    ledger::PublisherInfoFilter filter,
+    ledger::ActivityInfoFilter filter,
     PublisherInfoDatabase* backend) {
   ledger::PublisherInfoList list;
   if (!backend)
@@ -369,15 +369,14 @@ void RewardsServiceImpl::GetContentSiteList(
     uint32_t start, uint32_t limit,
     const GetContentSiteListCallback& callback) {
   auto now = base::Time::Now();
-  ledger::PublisherInfoFilter filter;
-  filter.category = ledger::PUBLISHER_CATEGORY::AUTO_CONTRIBUTE;
+  ledger::ActivityInfoFilter filter;
   filter.month = GetPublisherMonth(now);
   filter.year = GetPublisherYear(now);
   filter.min_duration = ledger_->GetPublisherMinVisitTime();
   filter.order_by.push_back(std::pair<std::string, bool>("ai.percent", false));
   filter.reconcile_stamp = ledger_->GetReconcileStamp();
   filter.excluded =
-    ledger::PUBLISHER_EXCLUDE_FILTER::FILTER_ALL_EXCEPT_EXCLUDED;
+    ledger::EXCLUDE_FILTER::FILTER_ALL_EXCEPT_EXCLUDED;
 
   ledger_->GetPublisherInfoList(start, limit,
       filter,
@@ -654,11 +653,11 @@ void RewardsServiceImpl::OnGrantFinish(ledger::Result result,
 
 void RewardsServiceImpl::OnReconcileComplete(ledger::Result result,
   const std::string& viewing_id,
-  ledger::PUBLISHER_CATEGORY category,
+  ledger::REWARDS_CATEGORY category,
   const std::string& probi) {
 
   if ((result == ledger::Result::LEDGER_OK &&
-       category == ledger::PUBLISHER_CATEGORY::AUTO_CONTRIBUTE) ||
+       category == ledger::REWARDS_CATEGORY::AUTO_CONTRIBUTE) ||
       result == ledger::Result::LEDGER_ERROR ||
       result == ledger::Result::NOT_ENOUGH_FUNDS ||
       result == ledger::Result::TIP_ERROR) {
@@ -832,7 +831,7 @@ void RewardsServiceImpl::OnActivityInfoSaved(
 }
 
 void RewardsServiceImpl::LoadActivityInfo(
-    ledger::PublisherInfoFilter filter,
+    ledger::ActivityInfoFilter filter,
     ledger::PublisherInfoCallback callback) {
   base::PostTaskAndReplyWithResult(file_task_runner_.get(), FROM_HERE,
       base::Bind(&GetPublisherActivityListOnFileTaskRunner,
@@ -864,7 +863,7 @@ void RewardsServiceImpl::OnActivityInfoLoaded(
 void RewardsServiceImpl::LoadPublisherInfoList(
     uint32_t start,
     uint32_t limit,
-    ledger::PublisherInfoFilter filter,
+    ledger::ActivityInfoFilter filter,
     ledger::PublisherInfoListCallback callback) {
   auto now = base::Time::Now();
   filter.month = GetPublisherMonth(now);
@@ -885,7 +884,7 @@ void RewardsServiceImpl::LoadPublisherInfoList(
 void RewardsServiceImpl::LoadCurrentPublisherInfoList(
     uint32_t start,
     uint32_t limit,
-    ledger::PublisherInfoFilter filter,
+    ledger::ActivityInfoFilter filter,
     ledger::PublisherInfoListCallback callback) {
   base::PostTaskAndReplyWithResult(file_task_runner_.get(), FROM_HERE,
       base::Bind(&GetPublisherActivityListOnFileTaskRunner,
@@ -1503,7 +1502,7 @@ void RewardsServiceImpl::OnDonate(const std::string& publisher_key, int amount,
 
   ledger::PublisherInfo publisher(
     publisher_key,
-    ledger::PUBLISHER_MONTH::ANY,
+    ledger::ACTIVITY_MONTH::ANY,
     -1);
 
   ledger_->DoDirectDonation(publisher, amount, "BAT");
@@ -1517,8 +1516,8 @@ bool SaveContributionInfoOnFileTaskRunner(const brave_rewards::ContributionInfo 
   return false;
 }
 
-void RewardsServiceImpl::OnContributionInfoSaved(const ledger::PUBLISHER_CATEGORY category, bool success) {
-  if (success && category == ledger::PUBLISHER_CATEGORY::DIRECT_DONATION) {
+void RewardsServiceImpl::OnContributionInfoSaved(const ledger::REWARDS_CATEGORY category, bool success) {
+  if (success && category == ledger::REWARDS_CATEGORY::DIRECT_DONATION) {
     TipsUpdated();
   }
 }
@@ -1528,7 +1527,7 @@ void RewardsServiceImpl::SaveContributionInfo(const std::string& probi,
   const int year,
   const uint32_t date,
   const std::string& publisher_key,
-  const ledger::PUBLISHER_CATEGORY category) {
+  const ledger::REWARDS_CATEGORY category) {
 
   brave_rewards::ContributionInfo info;
   info.probi = probi;

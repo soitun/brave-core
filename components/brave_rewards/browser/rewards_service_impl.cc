@@ -327,6 +327,7 @@ RewardsServiceImpl::RewardsServiceImpl(Profile* profile)
 
 RewardsServiceImpl::~RewardsServiceImpl() {
   file_task_runner_->DeleteSoon(FROM_HERE, publisher_info_backend_.release());
+  StopNotificationTimer();
 }
 
 void RewardsServiceImpl::Init() {
@@ -564,6 +565,7 @@ void RewardsServiceImpl::OnWalletInitialized(ledger::Result result) {
   if (result == ledger::Result::WALLET_CREATED) {
     SetRewardsMainEnabled(true);
     SetAutoContribute(true);
+    StartNotificationTimer();
     result = ledger::Result::LEDGER_OK;
   }
 
@@ -664,6 +666,9 @@ void RewardsServiceImpl::OnLedgerStateLoaded(
   handler->OnLedgerStateLoaded(data.empty() ? ledger::Result::LEDGER_ERROR
                                             : ledger::Result::LEDGER_OK,
                                data);
+  if (ledger_->GetRewardsMainEnabled()) {
+    StartNotificationTimer();
+  }
 }
 
 void RewardsServiceImpl::LoadPublisherState(
@@ -1655,6 +1660,47 @@ void RewardsServiceImpl::SetContributionAutoInclude(std::string publisher_key,
 
 RewardsNotificationService* RewardsServiceImpl::GetNotificationService() const {
   return notification_service_.get();
+}
+
+void RewardsServiceImpl::StartNotificationTimer() {
+  notification_timer_ = std::make_unique<base::RepeatingTimer>();
+  notification_timer_->Start(FROM_HERE, base::TimeDelta::FromMinutes(15), this,
+                             &RewardsServiceImpl::OnNotificationTimerFired);
+  DCHECK(notification_timer_->IsRunning());
+}
+
+void RewardsServiceImpl::StopNotificationTimer() {
+  notification_timer_.reset();
+}
+
+void RewardsServiceImpl::OnNotificationTimerFired() {
+  base::Time now = base::Time::Now();
+  if (ledger_->GetReconcileStamp() - now.ToJsTime() <
+      3 * base::Time::kMillisecondsPerDay) {
+    if (!HasSufficientBalanceToReconcile() &&
+        ShouldShowNotificationAddFunds()) {
+      ShowNotificationAddFunds();
+    }
+  }
+}
+
+bool RewardsServiceImpl::HasSufficientBalanceToReconcile() const {
+  return (ledger_->GetBalance() >= ledger_->GetContributionAmount());
+}
+
+bool RewardsServiceImpl::ShouldShowNotificationAddFunds() const {
+  base::Time next_time =
+      profile_->GetPrefs()->GetTime(kRewardsAddFundsNotification);
+  return (next_time.is_null() || base::Time::Now() > next_time);
+}
+
+void RewardsServiceImpl::ShowNotificationAddFunds() {
+  base::Time next_time = base::Time::Now() + base::TimeDelta::FromDays(3);
+  profile_->GetPrefs()->SetTime(kRewardsAddFundsNotification, next_time);
+  RewardsNotificationService::RewardsNotificationArgs args;
+  notification_service_->AddNotification(
+      RewardsNotificationService::REWARDS_NOTIFICATION_INSUFFICIENT_FUNDS, args,
+      "rewards_notification_insufficient_funds");
 }
 
 std::unique_ptr<ledger::LogStream> RewardsServiceImpl::Log(

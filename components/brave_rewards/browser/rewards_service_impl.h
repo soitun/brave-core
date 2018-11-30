@@ -286,6 +286,14 @@ class RewardsServiceImpl : public RewardsService,
   // URLFetcherDelegate impl
   void OnURLFetchComplete(const net::URLFetcher* source) override;
 
+  void StartNotificationTimer();
+  void StopNotificationTimer();
+  void OnNotificationTimerFired();
+
+  bool HasSufficientBalanceToReconcile() const;
+  bool ShouldShowNotificationAddFunds() const;
+  void ShowNotificationAddFunds();
+
   Profile* profile_;  // NOT OWNED
   std::unique_ptr<ledger::Ledger> ledger_;
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -309,6 +317,7 @@ class RewardsServiceImpl : public RewardsService,
   std::map<uint32_t, std::unique_ptr<base::OneShotTimer>> timers_;
   std::vector<std::string> current_media_fetchers_;
   std::vector<BitmapFetcherService::RequestId> request_ids_;
+  std::unique_ptr<base::RepeatingTimer> notification_timer_;
 
   uint32_t next_timer_id_;
 

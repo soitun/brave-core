@@ -379,6 +379,8 @@ void RewardsServiceImpl::OnLoad(SessionID tab_id, const GURL& url) {
   if (baseDomain == "")
     return;
 
+  const std::string publisher_url = origin.scheme() + "://" + baseDomain + "/";
+
   auto now = base::Time::Now();
   ledger::VisitData data(baseDomain,
                          origin.host(),
@@ -387,7 +389,7 @@ void RewardsServiceImpl::OnLoad(SessionID tab_id, const GURL& url) {
                          GetPublisherMonth(now),
                          GetPublisherYear(now),
                          baseDomain,
-                         origin.spec(),
+                         publisher_url,
                          "",
                          "");
   ledger_->OnLoad(data, GetCurrentTimestamp());

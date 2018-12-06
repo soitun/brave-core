@@ -1736,4 +1736,8 @@ void RewardsServiceImpl::OnDonate(
   OnDonate(publisher_key, amount, recurring, &info);
 }
 
+ledger::Ledger* RewardsServiceImpl::GetLedgerClient() const {
+  return ledger_.get();
+}
+
 }  // namespace brave_rewards

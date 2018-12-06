@@ -14,6 +14,7 @@
 #include "content/public/test/test_browser_thread_bundle.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "url/gurl.h"
 
 // npm run test -- brave_unit_tests --filter=RewardsServiceTest.*
 
@@ -39,6 +40,7 @@ class MockRewardsServiceObserver : public RewardsServiceObserver {
   MOCK_METHOD4(OnGetPublisherActivityFromUrl, void(RewardsService*, int, ledger::PublisherInfo*, uint64_t));
 };
 
+
 class RewardsServiceTest : public testing::Test {
  public:
   RewardsServiceTest() {}
@@ -55,6 +57,9 @@ class RewardsServiceTest : public testing::Test {
     ASSERT_TRUE(rewards_service() != NULL);
     observer_.reset(new MockRewardsServiceObserver);
     rewards_service_->AddObserver(observer_.get());
+
+    ledger_client_ =
+        static_cast<MockLedgerClient*>(rewards_service_->GetLedgerClient());
   }
 
   void TearDown() override {
@@ -65,6 +70,7 @@ class RewardsServiceTest : public testing::Test {
   Profile* profile() { return profile_.get(); }
   RewardsServiceImpl* rewards_service() { return rewards_service_; }
   MockRewardsServiceObserver* observer() { return observer_.get(); }
+  MockLedgerClient* ledger_client() { return ledger_client_; }
 
  private:
   // Need this as a very first member to run tests in UI thread
@@ -75,6 +81,7 @@ class RewardsServiceTest : public testing::Test {
   RewardsServiceImpl* rewards_service_;
   std::unique_ptr<MockRewardsServiceObserver> observer_;
   base::ScopedTempDir temp_dir_;
+  MockLedgerClient* ledger_client_;
 };
 
 TEST_F(RewardsServiceTest, HandleFlags) {
@@ -160,6 +167,11 @@ TEST_F(RewardsServiceTest, OnWalletProperties) {
   // wallet properties are empty (no call should be made)
   rewards_service()->OnWalletProperties(ledger::Result::LEDGER_OK, nullptr);
   EXPECT_CALL(*observer(), OnWalletProperties(_, _, _)).Times(0);
+}
+
+TEST_F(RewardsServiceTest, OnLoad) {
+  rewards_service()->OnLoad(SessionID::FromSerializedValue(1), GURL("https://brave.com"));
+  EXPECT_CALL(*ledger_client(), OnLoad(_, _)).Times(1);
 }
 
 // add test for strange entries

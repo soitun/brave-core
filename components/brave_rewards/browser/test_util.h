@@ -7,12 +7,23 @@
 
 #include <memory>
 
+#include "bat/ledger/ledger.h"
 #include "base/files/file_path.h"
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 
 class KeyedService;
 class Profile;
 
 namespace brave_rewards {
+
+class MockLedgerClient : public ledger::Ledger {
+ public:
+  MockLedgerClient();
+  ~MockLedgerClient() override;
+
+  MOCK_METHOD2(OnLoad, void(const ledger::VisitData& visit_data, const uint64_t& current_time));
+};
 
 std::unique_ptr<Profile> CreateBraveRewardsProfile(const base::FilePath& path);
 

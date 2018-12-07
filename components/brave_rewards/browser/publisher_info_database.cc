@@ -483,6 +483,10 @@ std::string PublisherInfoDatabase::BuildClauses(int start,
     ledger::PUBLISHER_EXCLUDE_FILTER::FILTER_ALL_EXCEPT_EXCLUDED)
     clauses += " AND pi.excluded != ?";
 
+  if (!filter.non_verified) {
+    clauses += " AND pi.verified = 1";
+  }
+
   for (const auto& it : filter.order_by) {
     clauses += " ORDER BY " + it.first;
     clauses += (it.second ? " ASC" : " DESC");

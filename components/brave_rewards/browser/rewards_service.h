@@ -111,6 +111,7 @@ class RewardsService : public KeyedService {
     std::string publisher_key, bool excluded, uint64_t windowId) = 0;
   virtual RewardsNotificationService* GetNotificationService() const = 0;
   virtual bool CheckImported() = 0;
+  virtual void SetBackupCompleted() = 0;
 
   void AddObserver(RewardsServiceObserver* observer);
   void RemoveObserver(RewardsServiceObserver* observer);

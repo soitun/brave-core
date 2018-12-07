@@ -13,8 +13,8 @@
 #include "base/files/file_util.h"
 #include "base/files/important_file_writer.h"
 #include "base/guid.h"
-#include "base/logging.h"
 #include "base/i18n/time_formatting.h"
+#include "base/logging.h"
 #include "base/sequenced_task_runner.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -22,6 +22,7 @@
 #include "base/task/post_task.h"
 #include "base/task_runner_util.h"
 #include "base/threading/sequenced_task_runner_handle.h"
+#include "base/time/time.h"
 #include "bat/ledger/ledger.h"
 #include "bat/ledger/media_publisher_info.h"
 #include "bat/ledger/publisher_info.h"
@@ -327,6 +328,7 @@ RewardsServiceImpl::RewardsServiceImpl(Profile* profile)
 
 RewardsServiceImpl::~RewardsServiceImpl() {
   file_task_runner_->DeleteSoon(FROM_HERE, publisher_info_backend_.release());
+  StopNotificationTimer();
 }
 
 void RewardsServiceImpl::Init() {
@@ -335,6 +337,38 @@ void RewardsServiceImpl::Init() {
   private_observers_.AddObserver(private_observer_.get());
 #endif
   ledger_->Initialize();
+}
+
+void RewardsServiceImpl::MaybeShowBackupNotification() {
+  PrefService* pref_service = profile_->GetPrefs();
+  bool user_has_funded = pref_service->GetBoolean(kRewardsUserHasFunded);
+  bool backup_succeeded = pref_service->GetBoolean(kRewardsBackupSucceeded);
+  if (user_has_funded && !backup_succeeded) {
+    base::Time now = base::Time::Now();
+    base::Time boot_timestamp = pref_service->GetTime(kRewardsBootTimestamp);
+    base::TimeDelta backup_notification_frequency =
+        pref_service->GetTimeDelta(kRewardsBackupNotificationFrequency);
+    base::TimeDelta backup_notification_interval =
+        pref_service->GetTimeDelta(kRewardsBackupNotificationInterval);
+    if (boot_timestamp.is_null()) {
+      boot_timestamp = now;
+      backup_notification_interval = backup_notification_frequency;
+      pref_service->SetTime(kRewardsBootTimestamp, boot_timestamp);
+      pref_service->SetTimeDelta(kRewardsBackupNotificationInterval,
+                                 backup_notification_interval);
+    }
+    base::TimeDelta elapsed = now - boot_timestamp;
+    if (elapsed > backup_notification_interval) {
+      base::TimeDelta next_backup_notification_interval =
+          backup_notification_interval + backup_notification_frequency;
+      pref_service->SetTimeDelta(kRewardsBackupNotificationInterval,
+                                 next_backup_notification_interval);
+      RewardsNotificationService::RewardsNotificationArgs args;
+      notification_service_->AddNotification(
+          RewardsNotificationService::REWARDS_NOTIFICATION_BACKUP_WALLET, args,
+          "rewards_notification_backup_wallet");
+    }
+  }
 }
 
 void RewardsServiceImpl::CreateWallet() {
@@ -566,6 +600,7 @@ void RewardsServiceImpl::OnWalletInitialized(ledger::Result result) {
   if (result == ledger::Result::WALLET_CREATED) {
     SetRewardsMainEnabled(true);
     SetAutoContribute(true);
+    StartNotificationTimer();
     result = ledger::Result::LEDGER_OK;
   }
 
@@ -666,6 +701,9 @@ void RewardsServiceImpl::OnLedgerStateLoaded(
   handler->OnLedgerStateLoaded(data.empty() ? ledger::Result::LEDGER_ERROR
                                             : ledger::Result::LEDGER_OK,
                                data);
+  if (ledger_->GetRewardsMainEnabled()) {
+    StartNotificationTimer();
+  }
 }
 
 void RewardsServiceImpl::LoadPublisherState(
@@ -953,8 +991,10 @@ void RewardsServiceImpl::TriggerOnWalletInitialized(int error_code) {
 
 void RewardsServiceImpl::TriggerOnWalletProperties(int error_code,
     std::unique_ptr<ledger::WalletInfo> wallet_info) {
-  std::unique_ptr<brave_rewards::WalletProperties> wallet_properties;
+  if (wallet_info && wallet_info->balance_ > 0)
+    profile_->GetPrefs()->SetBoolean(kRewardsUserHasFunded, true);
 
+  std::unique_ptr<brave_rewards::WalletProperties> wallet_properties;
   for (auto& observer : observers_) {
     if (wallet_info) {
       wallet_properties.reset(new brave_rewards::WalletProperties);
@@ -1638,7 +1678,24 @@ RewardsNotificationService* RewardsServiceImpl::GetNotificationService() const {
   return notification_service_.get();
 }
 
-std::unique_ptr<ledger::LogStream> RewardsServiceImpl::Log(
+void RewardsServiceImpl::StartNotificationTimer() {
+  base::TimeDelta notification_timer_interval =
+      profile_->GetPrefs()->GetTimeDelta(kRewardsNotificationTimerInterval);
+  notification_timer_ = std::make_unique<base::RepeatingTimer>();
+  notification_timer_->Start(FROM_HERE, notification_timer_interval, this,
+                             &RewardsServiceImpl::OnNotificationTimerFired);
+  DCHECK(notification_timer_->IsRunning());
+}
+
+void RewardsServiceImpl::StopNotificationTimer() {
+  notification_timer_.reset();
+}
+
+void RewardsServiceImpl::OnNotificationTimerFired() {
+  MaybeShowBackupNotification();
+}
+
+ std::unique_ptr<ledger::LogStream> RewardsServiceImpl::Log(
     const char* file,
     int line,
     const ledger::LogLevel log_level) const {
@@ -1708,6 +1765,10 @@ bool RewardsServiceImpl::CheckImported() {
   }
 
   return pinned_item_count > 0;
+}
+
+void RewardsServiceImpl::SetBackupCompleted() {
+  profile_->GetPrefs()->SetBoolean(kRewardsBackupSucceeded, true);
 }
 
 void RewardsServiceImpl::OnDonate(

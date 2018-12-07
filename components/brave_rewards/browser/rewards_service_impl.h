@@ -128,6 +128,7 @@ class RewardsServiceImpl : public RewardsService,
     std::string publisher_key, bool excluded, uint64_t windowId) override;
   RewardsNotificationService* GetNotificationService() const override;
   bool CheckImported() override;
+  void SetBackupCompleted() override;
 
   static void HandleFlags(const std::string& options);
   void OnWalletProperties(ledger::Result result,
@@ -198,6 +199,7 @@ class RewardsServiceImpl : public RewardsService,
       ledger::Result result,
       std::unique_ptr<ledger::PublisherInfo> info,
       uint64_t windowId);
+  void MaybeShowBackupNotification();
 
   // ledger::LedgerClient
   std::string GenerateGUID() const override;
@@ -282,6 +284,10 @@ class RewardsServiceImpl : public RewardsService,
   // URLFetcherDelegate impl
   void OnURLFetchComplete(const net::URLFetcher* source) override;
 
+  void StartNotificationTimer();
+  void StopNotificationTimer();
+  void OnNotificationTimerFired();
+
   Profile* profile_;  // NOT OWNED
   std::unique_ptr<ledger::Ledger> ledger_;
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -305,6 +311,7 @@ class RewardsServiceImpl : public RewardsService,
   std::map<uint32_t, std::unique_ptr<base::OneShotTimer>> timers_;
   std::vector<std::string> current_media_fetchers_;
   std::vector<BitmapFetcherService::RequestId> request_ids_;
+  std::unique_ptr<base::RepeatingTimer> notification_timer_;
 
   uint32_t next_timer_id_;
 

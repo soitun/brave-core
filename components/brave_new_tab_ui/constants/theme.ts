@@ -6,32 +6,17 @@ export const theme = {
   newTab: {
     fontFamily: '"Poppins", sans-serif'
   },
-  newTabStats: {
-    padding: '40px 0'
-  },
   newPrivateTab: {
     fontFamily: '"Poppins", sans-serif',
     padding: '80px 60px 40px',
     background: 'linear-gradient(#4b3c6e, #000)'
   },
-  trackersBlocked: {
-    counterColor: '#f39030',
-    descriptionColor: '#fff'
-  },
-  adsBlocked: {
-    counterColor: '#fe521d',
-    descriptionColor: '#fff'
-  },
-  httpsUpgrades: {
-    counterColor: '#0796fa',
-    descriptionColor: '#fff'
-  },
-  estimatedTime: {
-    counterColor: '#999999',
-    descriptionColor: '#fff'
-  },
+
+/* styling for the stats items is still linked to `src/brave/node_modules/brave-ui/src/features/newTab/stats/style.ts` */
+
   clock: {
-    color: '#fff'
+    color: '#fff',
+    fontSize: '90px'
   },
   clockContainer: {
     justifyContent: 'flex-end'

@@ -111,7 +111,7 @@ class Block extends React.Component<Props, {}> {
       style,
       favicon
     } = this.props
-    const starIcon = isBookmarked ? 'fa-star' : 'fa-star-o'
+    const starIcon = isBookmarked ? 'fa-bookmark-o' : 'fa-bookmark'
     const pinIcon = isPinned ? 'fa-minus' : 'fa-thumb-tack'
 
     return connectDragSource(connectDropTarget(

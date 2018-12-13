@@ -117,13 +117,13 @@ void CustomizeWebUIHTMLSource(const std::string &name, content::WebUIDataSource*
         { "hours", IDS_BRAVE_NEW_TAB_HOURS },
         { "day", IDS_BRAVE_NEW_TAB_DAY },
         { "days", IDS_BRAVE_NEW_TAB_DAYS },
+        { "photoBy", IDS_BRAVE_NEW_TAB_PHOTO_BY },
         { "preferencesPageTitle", IDS_BRAVE_NEW_TAB_PREFERENCES_PAGE_TITLE },
         { "bookmarksPageTitle", IDS_BRAVE_NEW_TAB_BOOKMARKS_PAGE_TITLE },
         { "historyPageTitle", IDS_BRAVE_NEW_TAB_HISTORY_PAGE_TITLE },
 
         // Private Tab - General
         { "learnMore", IDS_BRAVE_PRIVATE_NEW_TAB_LEARN_MORE },
-        { "photoBy", IDS_BRAVE_NEW_TAB_PHOTO_BY },
         { "done", IDS_BRAVE_PRIVATE_NEW_TAB_DONE },
         { "searchSettings", IDS_BRAVE_PRIVATE_NEW_TAB_SEARCH_SETTINGS },
         { "headerLabel", IDS_BRAVE_PRIVATE_NEW_TAB_THIS_IS_A },

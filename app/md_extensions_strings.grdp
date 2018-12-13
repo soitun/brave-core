@@ -222,7 +222,7 @@
     Retry
   </message>
   <message name="IDS_MD_EXTENSIONS_NO_INSTALLED_ITEMS" desc="The message shown to the user on the Extensions settings page when there are no extensions or apps installed.">
-    Find extensions and themes in the <ph name="BEGIN_LINK">&lt;a target="_blank" href="https://chrome.google.com/webstore/category/extensions"&gt;</ph>Brave Web Store<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>
+    You don't have any extensions yet. Would you like to <ph name="BEGIN_LINK">&lt;a target="_blank" href="https://chrome.google.com/webstore/category/extensions"&gt;</ph>install some<ph name="END_LINK">&lt;/a&gt;<ex>&lt;/a&gt;</ex></ph>?
   </message>
   <message name="IDS_MD_EXTENSIONS_NO_DESCRIPTION" desc="The message shown to the user when an extension does not have any description.">
     No description provided

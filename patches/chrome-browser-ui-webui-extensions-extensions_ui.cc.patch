@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/webui/extensions/extensions_ui.cc b/chrome/browser/ui/webui/extensions/extensions_ui.cc
+index 393653d66928e306bfdf479d6e0fd194655e783c..0bfadfbae7bb628c06d0c746bc9ba41acfbe0c03 100644
+--- a/chrome/browser/ui/webui/extensions/extensions_ui.cc
++++ b/chrome/browser/ui/webui/extensions/extensions_ui.cc
+@@ -274,8 +274,8 @@ content::WebUIDataSource* CreateMdExtensionsSource(bool in_dev_mode) {
+      IDS_MD_EXTENSIONS_KIOSK_DISABLE_BAILOUT_SHORTCUT_WARNING_TITLE},
+ #endif
+   };
+-  AddLocalizedStringsBulk(source, localized_strings,
+-                          base::size(localized_strings));
++  BraveAddLocalizedStringsBulk(source, localized_strings,
++                               base::size(localized_strings));
+ 
+   source->AddString("errorLinesNotShownSingular",
+                     l10n_util::GetPluralStringFUTF16(

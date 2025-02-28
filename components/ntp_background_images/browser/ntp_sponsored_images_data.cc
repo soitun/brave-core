@@ -12,10 +12,10 @@
 #include "base/strings/stringprintf.h"
 #include "base/uuid.h"
 #include "brave/components/brave_ads/core/public/ad_units/new_tab_page_ad/new_tab_page_ad_info.h"
+#include "brave/components/brave_ads/core/public/common/url/url_util.h"
 #include "brave/components/constants/webui_url_constants.h"
 #include "brave/components/ntp_background_images/browser/url_constants.h"
 #include "content/public/common/url_constants.h"
-#include "url/url_constants.h"
 
 namespace ntp_background_images {
 
@@ -36,7 +36,6 @@ constexpr char kCreativeConditionMatchersKey[] = "conditionMatchers";
 constexpr char kCreativeConditionMatcherConditionKey[] = "condition";
 constexpr char kCreativeConditionMatcherPrefPathKey[] = "prefPath";
 constexpr char kWallpaperKey[] = "wallpaper";
-constexpr char kImageWallpaperType[] = "image";
 constexpr char kImageWallpaperRelativeUrlKey[] = "relativeUrl";
 constexpr char kImageWallpaperFocalPointXKey[] = "focalPoint.x";
 constexpr char kImageWallpaperFocalPointYKey[] = "focalPoint.y";
@@ -47,17 +46,16 @@ constexpr char kImageWallpaperViewBoxHeightKey[] = "viewBox.height";
 constexpr char kImageWallpaperBackgroundColorKey[] = "backgroundColor";
 constexpr char kImageWallpaperButtonImageRelativeUrlKey[] =
     "button.image.relativeUrl";
-constexpr char kRichMediaWallpaperType[] = "richMedia";
 constexpr char kRichMediaWallpaperRelativeUrlKey[] = "relativeUrl";
 
 std::optional<std::string> ToString(WallpaperType wallpaper_type) {
   switch (wallpaper_type) {
     case WallpaperType::kImage: {
-      return "image";
+      return kImageWallpaperType;
     }
 
     case WallpaperType::kRichMedia: {
-      return "richMedia";
+      return kRichMediaWallpaperType;
     }
   }
 
@@ -231,21 +229,21 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
         creative_set_value.GetIfDict();
     if (!creative_set_dict) {
       // Invalid creative set.
-      return std::nullopt;
+      continue;
     }
 
     const std::string* const creative_set_id =
         creative_set_dict->FindString(kCreativeSetIdKey);
     if (!creative_set_id) {
       // Creative set ID is required.
-      return std::nullopt;
+      continue;
     }
 
     const base::Value::List* const creatives =
         creative_set_dict->FindList(kCreativesKey);
     if (!creatives) {
       // Creative are required.
-      return std::nullopt;
+      continue;
     }
 
     for (const auto& creative_value : *creatives) {
@@ -254,14 +252,14 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
       const base::Value::Dict* const creative_dict = creative_value.GetIfDict();
       if (!creative_dict) {
         // Invalid creative.
-        return std::nullopt;
+        continue;
       }
 
       const std::string* const creative_instance_id =
           creative_dict->FindString(kCreativeInstanceIdKey);
       if (!creative_instance_id) {
         // Creative instance ID is required.
-        return std::nullopt;
+        continue;
       }
       creative.creative_instance_id = *creative_instance_id;
 
@@ -269,14 +267,14 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
           creative_dict->FindString(kCreativeCompanyNameKey);
       if (!company_name) {
         // Company name is required.
-        return std::nullopt;
+        continue;
       }
       creative.logo.company_name = *company_name;
 
       const std::string* const alt = creative_dict->FindString(kCreativeAltKey);
       if (!alt) {
         // Alt is required.
-        return std::nullopt;
+        continue;
       }
       creative.logo.alt_text = *alt;
 
@@ -284,13 +282,13 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
           creative_dict->FindString(kCreativeTargetUrlKey);
       if (!target_url) {
         // Target URL is required.
-        return std::nullopt;
-      }
-      if (!GURL(*target_url).SchemeIs(url::kHttpsScheme)) {
-        // Target URL is not supported.
-        return std::nullopt;
+        continue;
       }
       creative.logo.destination_url = *target_url;
+      if (!brave_ads::ShouldSupportUrl(GURL(creative.logo.destination_url))) {
+        // Target URL is not supported.
+        continue;
+      }
 
       // Condition matchers.
       const base::Value::List* const condition_matchers =
@@ -302,7 +300,7 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
               condition_matcher_value.GetIfDict();
           if (!condition_matcher_dict) {
             // Invalid condition matcher.
-            return std::nullopt;
+            continue;
           }
 
           const std::string* const condition =
@@ -310,7 +308,7 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
                   kCreativeConditionMatcherConditionKey);
           if (!condition) {
             // Condition is required.
-            return std::nullopt;
+            continue;
           }
 
           const std::string* const pref_path =
@@ -318,7 +316,7 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
                   kCreativeConditionMatcherPrefPathKey);
           if (!pref_path) {
             // Pref path is required.
-            return std::nullopt;
+            continue;
           }
 
           creative.condition_matchers.emplace(*pref_path, *condition);
@@ -330,14 +328,14 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
           creative_dict->FindDict(kWallpaperKey);
       if (!wallpaper) {
         // Wallpaper is required.
-        return std::nullopt;
+        continue;
       }
 
       const std::string* const wallpaper_type =
           wallpaper->FindString(kWallpaperTypeKey);
       if (!wallpaper_type) {
         // Wallpaper type is required.
-        return std::nullopt;
+        continue;
       }
 
       if (*wallpaper_type == kImageWallpaperType) {
@@ -348,11 +346,11 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
             wallpaper->FindString(kImageWallpaperRelativeUrlKey);
         if (!relative_url) {
           // Relative url is required.
-          return std::nullopt;
+          continue;
         }
         if (base::FilePath::FromUTF8Unsafe(*relative_url).ReferencesParent()) {
           // Path traversal, deny access.
-          return std::nullopt;
+          continue;
         }
         creative.file_path = installed_dir.AppendASCII(*relative_url);
         creative.url = GURL(url_prefix + *relative_url);
@@ -394,12 +392,12 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
                 kImageWallpaperButtonImageRelativeUrlKey);
         if (!button_image_relative_url) {
           // Relative url is required.
-          return std::nullopt;
+          continue;
         }
         if (base::FilePath::FromUTF8Unsafe(*button_image_relative_url)
                 .ReferencesParent()) {
           // Path traversal, deny access.
-          return std::nullopt;
+          continue;
         }
         creative.logo.image_file =
             installed_dir.AppendASCII(*button_image_relative_url);
@@ -413,17 +411,17 @@ std::optional<Campaign> NTPSponsoredImagesData::ParseCampaign(
                 kRichMediaWallpaperRelativeUrlKey);
         if (!relative_url) {
           // Relative url is required.
-          return std::nullopt;
+          continue;
         }
         if (base::FilePath::FromUTF8Unsafe(*relative_url).ReferencesParent()) {
           // Path traversal, deny access.
-          return std::nullopt;
+          continue;
         }
         creative.file_path = installed_dir.AppendASCII(*relative_url);
         creative.url = GURL(kNTPNewTabTakeoverRichMediaUrl + *relative_url);
       } else {
         // Invalid wallpaper type.
-        return std::nullopt;
+        continue;
       }
 
       campaign.creatives.push_back(creative);

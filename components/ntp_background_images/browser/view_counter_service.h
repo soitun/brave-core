@@ -11,8 +11,10 @@
 #include <string>
 #include <vector>
 
+#include "base/functional/callback_forward.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/timer/wall_clock_timer.h"
 #include "base/values.h"
@@ -90,6 +92,12 @@ class ViewCounterService : public KeyedService,
   std::optional<base::Value::Dict> GetCurrentWallpaperForDisplay();
   std::optional<base::Value::Dict> GetCurrentWallpaper() const;
   std::optional<base::Value::Dict> GetCurrentBrandedWallpaper();
+  void GetCurrentBrandedWallpaper(
+      base::OnceCallback<
+          void(const std::optional<GURL>& url,
+               const std::optional<std::string>& placement_id,
+               const std::optional<std::string>& creative_instance_id,
+               const std::optional<GURL>& target_url)> callback) const;
   std::optional<brave_ads::ConditionMatcherMap> GetConditionMatchers(
       const base::Value::Dict& dict);
   std::optional<base::Value::Dict>
@@ -158,6 +166,8 @@ class ViewCounterService : public KeyedService,
   void OnSponsoredContentDidUpdate(const base::Value::Dict& data) override;
   void OnSuperReferralCampaignDidEnd() override;
 
+  void ParseAndSaveCreativeNewTabPageAdsCallback(bool success);
+
   void ResetNotificationState();
   bool IsSponsoredImagesWallpaperOptedIn() const;
   bool IsSuperReferralWallpaperOptedIn() const;
@@ -187,6 +197,7 @@ class ViewCounterService : public KeyedService,
   PrefChangeRegistrar pref_change_registrar_;
   ViewCounterModel model_;
   base::WallClockTimer p3a_update_timer_;
+  std::optional<base::Value::Dict> current_wallpaper_;
 
   // Can be null if custom background is not supported.
   raw_ptr<BraveNTPCustomBackgroundService> custom_background_service_ = nullptr;
@@ -200,6 +211,8 @@ class ViewCounterService : public KeyedService,
   base::ScopedObservation<NTPBackgroundImagesService,
                           NTPBackgroundImagesService::Observer>
       ntp_background_images_service_observation_{this};
+
+  base::WeakPtrFactory<ViewCounterService> weak_ptr_factory_{this};
 };
 
 }  // namespace ntp_background_images

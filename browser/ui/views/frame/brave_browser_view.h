@@ -72,8 +72,11 @@ class BraveBrowserView : public BrowserView,
   BraveBrowserView& operator=(const BraveBrowserView&) = delete;
   ~BraveBrowserView() override;
 
+  static BraveBrowserView* From(BrowserView* view);
+
   SplitView* split_view() { return split_view_; }
   const SplitView* split_view() const { return split_view_; }
+  views::View* GetContentsBoundingView() const;
 
   void SetStarredState(bool is_starred) override;
   void ShowUpdateChromeDialog() override;
@@ -84,6 +87,7 @@ class BraveBrowserView : public BrowserView,
   void CloseWalletBubble();
   WalletButton* GetWalletButton();
   views::View* GetWalletButtonAnchorView();
+  void UpdateContentsSeparatorVisibility();
 
   // Triggers layout of web modal dialogs
   void NotifyDialogPositionRequiresUpdate();

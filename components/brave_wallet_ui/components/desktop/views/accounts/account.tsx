@@ -25,7 +25,9 @@ import {
   AccountModalTypes,
   AccountPageTabs,
   SupportedTestNetworks,
-  BitcoinTestnetKeyringIds
+  BitcoinTestnetKeyringIds,
+  ZCashTestnetKeyringIds,
+  CardanoTestnetKeyringIds
 } from '../../../../constants/types'
 
 // utils
@@ -130,7 +132,8 @@ import { useAccountsQuery } from '../../../../common/slices/api.slice.extra'
 const INDIVIDUAL_TESTNET_ACCOUNT_KEYRING_IDS = [
   ...BitcoinTestnetKeyringIds,
   BraveWallet.KeyringId.kFilecoinTestnet,
-  BraveWallet.KeyringId.kZCashTestnet
+  ...ZCashTestnetKeyringIds,
+  ...CardanoTestnetKeyringIds
 ]
 
 const removedNFTsRouteOptions = AccountDetailsOptions.filter(
@@ -227,7 +230,10 @@ export const Account = () => {
     ? chainTipStatus.chainTip - chainTipStatus.latestScannedBlock
     : 0
 
-  const showSyncWarning = isShieldedAccount && !syncWarningDismissed
+  const showSyncWarning =
+    isShieldedAccount &&
+    (blocksBehind > 0 || chainTipStatus === null) &&
+    !syncWarningDismissed
 
   // custom hooks & memos
   const scrollIntoView = useScrollIntoView()

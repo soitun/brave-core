@@ -353,6 +353,11 @@ struct DerivedAccountInfo {
                                      mojom::AccountKind::kDerived,
                                      account_index);
     }
+    if (IsCardanoKeyring(keyring_id)) {
+      return MakeIndexBasedAccountId(GetCoinForKeyring(keyring_id), keyring_id,
+                                     mojom::AccountKind::kDerived,
+                                     account_index);
+    }
     return MakeAccountId(GetCoinForKeyring(keyring_id), keyring_id,
                          mojom::AccountKind::kDerived, account_address);
   }
@@ -638,6 +643,8 @@ KeyringService::KeyringService(JsonRpcService* json_rpc_service,
       base::BindRepeating(&KeyringService::OnAutoLockPreferenceChanged,
                           base::Unretained(this)));
 
+  enabled_keyrings_ = GetEnabledKeyrings();
+
   MaybeUnlockWithCommandLine();
 }
 
@@ -739,6 +746,10 @@ bool KeyringService::CreateWalletInternal(const std::string& mnemonic,
   return true;
 }
 
+bool KeyringService::IsKeyringEnabled(mojom::KeyringId keyring_id) const {
+  return base::Contains(enabled_keyrings_, keyring_id);
+}
+
 void KeyringService::CreateKeyrings(const KeyringSeed& keyring_seed) {
   ethereum_keyring_ = std::make_unique<EthereumKeyring>(keyring_seed.eth_seed);
 
@@ -749,41 +760,46 @@ void KeyringService::CreateKeyrings(const KeyringSeed& keyring_seed) {
   filecoin_testnet_keyring_ = std::make_unique<FilecoinKeyring>(
       keyring_seed.seed, KeyringId::kFilecoinTestnet);
 
-  if (IsKeyringSupported(KeyringId::kBitcoin84) &&
-      IsKeyringSupported(KeyringId::kBitcoin84Testnet)) {
+  if (IsKeyringEnabled(KeyringId::kBitcoin84)) {
     bitcoin_hd_mainnet_keyring_ = std::make_unique<BitcoinHDKeyring>(
         keyring_seed.seed, KeyringId::kBitcoin84);
+  }
+  if (IsKeyringEnabled(KeyringId::kBitcoin84Testnet)) {
     bitcoin_hd_testnet_keyring_ = std::make_unique<BitcoinHDKeyring>(
         keyring_seed.seed, KeyringId::kBitcoin84Testnet);
   }
-  if (IsKeyringSupported(KeyringId::kBitcoinImport) &&
-      IsKeyringSupported(KeyringId::kBitcoinImportTestnet)) {
+  if (IsKeyringEnabled(KeyringId::kBitcoinImport)) {
     bitcoin_import_mainnet_keyring_ =
         std::make_unique<BitcoinImportKeyring>(KeyringId::kBitcoinImport);
+  }
+  if (IsKeyringEnabled(KeyringId::kBitcoinImportTestnet)) {
     bitcoin_import_testnet_keyring_ = std::make_unique<BitcoinImportKeyring>(
         KeyringId::kBitcoinImportTestnet);
   }
-  if (IsKeyringSupported(KeyringId::kBitcoinHardware) &&
-      IsKeyringSupported(KeyringId::kBitcoinHardwareTestnet)) {
+  if (IsKeyringEnabled(KeyringId::kBitcoinHardware)) {
     bitcoin_hardware_mainnet_keyring_ =
         std::make_unique<BitcoinHardwareKeyring>(KeyringId::kBitcoinHardware);
+  }
+  if (IsKeyringEnabled(KeyringId::kBitcoinHardwareTestnet)) {
     bitcoin_hardware_testnet_keyring_ =
         std::make_unique<BitcoinHardwareKeyring>(
             KeyringId::kBitcoinHardwareTestnet);
   }
 
-  if (IsKeyringSupported(KeyringId::kZCashMainnet) &&
-      IsKeyringSupported(KeyringId::kZCashTestnet)) {
+  if (IsKeyringEnabled(KeyringId::kZCashMainnet)) {
     zcash_hd_mainnet_keyring_ = std::make_unique<ZCashKeyring>(
         keyring_seed.seed, KeyringId::kZCashMainnet);
+  }
+  if (IsKeyringEnabled(KeyringId::kZCashTestnet)) {
     zcash_hd_testnet_keyring_ = std::make_unique<ZCashKeyring>(
         keyring_seed.seed, KeyringId::kZCashTestnet);
   }
 
-  if (IsKeyringSupported(KeyringId::kCardanoMainnet) &&
-      IsKeyringSupported(KeyringId::kCardanoTestnet)) {
+  if (IsKeyringEnabled(KeyringId::kCardanoMainnet)) {
     cardano_hd_mainnet_keyring_ = std::make_unique<CardanoHDKeyring>(
         keyring_seed.seed, KeyringId::kCardanoMainnet);
+  }
+  if (IsKeyringEnabled(KeyringId::kCardanoTestnet)) {
     cardano_hd_testnet_keyring_ = std::make_unique<CardanoHDKeyring>(
         keyring_seed.seed, KeyringId::kCardanoTestnet);
   }
@@ -826,7 +842,7 @@ void KeyringService::CreateDefaultAccounts() {
 }
 
 void KeyringService::LoadAllAccountsFromPrefs() {
-  for (auto keyring_id : GetSupportedKeyrings()) {
+  for (auto keyring_id : GetEnabledKeyrings()) {
     LoadAccountsFromPrefs(keyring_id);
   }
 }
@@ -943,7 +959,7 @@ template <>
 CardanoHDKeyring* KeyringService::GetKeyring(
     mojom::KeyringId keyring_id) const {
   for (auto* keyring :
-       {cardano_hd_mainnet_keyring_.get(), cardano_hd_mainnet_keyring_.get()}) {
+       {cardano_hd_mainnet_keyring_.get(), cardano_hd_testnet_keyring_.get()}) {
     if (keyring && keyring->keyring_id() == keyring_id) {
       return keyring;
     }
@@ -1474,6 +1490,10 @@ std::optional<std::string> KeyringService::AddHDAccountForKeyringInternal(
   }
 
   if (auto* keyring = GetKeyring<ZCashKeyring>(keyring_id)) {
+    return keyring->AddNewHDAccount(index);
+  }
+
+  if (auto* keyring = GetKeyring<CardanoHDKeyring>(keyring_id)) {
     return keyring->AddNewHDAccount(index);
   }
 
@@ -2651,7 +2671,7 @@ const std::vector<mojom::AccountInfoPtr>& KeyringService::GetAllAccountInfos() {
   if (!account_info_cache_ || account_info_cache_->empty()) {
     account_info_cache_ =
         std::make_unique<std::vector<mojom::AccountInfoPtr>>();
-    for (const auto& keyring_id : GetSupportedKeyrings()) {
+    for (const auto& keyring_id : GetEnabledKeyrings()) {
       for (auto& account_info : GetAccountInfosForKeyring(keyring_id)) {
         account_info_cache_->push_back(std::move(account_info));
       }

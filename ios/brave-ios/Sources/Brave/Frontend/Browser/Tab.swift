@@ -414,7 +414,9 @@ class Tab: NSObject {
     didSet {
       var isNightModeEnabled = false
 
-      if let fetchedTabURL = fetchedURL, nightMode {
+      if let fetchedTabURL = fetchedURL, nightMode,
+        !DarkReaderScriptHandler.isNightModeBlockedURL(fetchedTabURL)
+      {
         isNightModeEnabled = true
       }
 
@@ -431,6 +433,7 @@ class Tab: NSObject {
   }
 
   var translateHelper: BraveTranslateTabHelper?
+  private(set) lazy var leoTabHelper = BraveLeoScriptTabHelper(tab: self)
 
   /// Boolean tracking custom url-scheme alert presented
   var isExternalAppAlertPresented = false
@@ -473,14 +476,6 @@ class Tab: NSObject {
     super.init()
 
     self.contentScriptManager.tab = self
-  }
-
-  weak var navigationDelegate: WKNavigationDelegate? {
-    didSet {
-      if let webView = webView {
-        webView.navigationDelegate = navigationDelegate
-      }
-    }
   }
 
   /// A helper property that handles native to Brave Search communication.
@@ -527,7 +522,6 @@ class Tab: NSObject {
       // Turning off masking allows the web content to flow outside of the scrollView's frame
       // which allows the content appear beneath the toolbars in the BrowserViewController
       webView.scrollView.layer.masksToBounds = false
-      webView.navigationDelegate = navigationDelegate
 
       restore(webView, restorationData: self.sessionData)
 
@@ -545,7 +539,7 @@ class Tab: NSObject {
         .cookieBlocking: Preferences.Privacy.blockAllCookies.value,
         .mediaBackgroundPlay: Preferences.General.mediaAutoBackgrounding.value,
         .nightMode: Preferences.General.nightModeEnabled.value,
-        .braveTranslate: Preferences.Translate.translateEnabled.value,
+        .braveTranslate: Preferences.Translate.translateEnabled.value != false,
       ]
 
       userScripts = Set(scriptPreferences.filter({ $0.value }).map({ $0.key }))

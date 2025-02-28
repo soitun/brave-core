@@ -415,6 +415,12 @@ export function ConversationContextProvider(props: React.PropsWithChildren) {
     })
   }
 
+  React.useEffect(() => {
+    try {
+      getAPI().metrics.onQuickActionStatusChange(!!context.selectedActionType)
+    } catch (e) {}
+  }, [context.selectedActionType])
+
   const handleActionTypeClick = (actionType: Mojom.ActionType) => {
     setPartialContext({
       selectedActionType: actionType
@@ -459,6 +465,10 @@ export function ConversationContextProvider(props: React.PropsWithChildren) {
       // Submitting a conversation entry manually, after opt-in,
       // means the storage notice can be dismissed.
       aiChatContext.dismissStorageNotice()
+    }
+
+    if (aiChatContext.isStandalone) {
+      getAPI().metrics.onSendingPromptWithFullPage()
     }
 
     if (context.selectedActionType) {
@@ -557,9 +567,16 @@ export function useConversation() {
   return React.useContext(ConversationReactContext)
 }
 
+export function useIsNewConversation() {
+  const conversationContext = useConversation()
+  const aiChatContext = useAIChat()
+
+  // A conversation is new if it isn't in the list of visible conversations.
+  return !aiChatContext.visibleConversations.find(c => c.uuid === conversationContext.conversationUuid)
+}
+
 export function useSupportsAttachments() {
   const aiChatContext = useAIChat()
-  const conversationContext = useConversation()
-  return aiChatContext.isStandalone
-    && !aiChatContext.visibleConversations.find(c => c.uuid === conversationContext.conversationUuid)
+  const isNew = useIsNewConversation()
+  return aiChatContext.isStandalone && isNew
 }

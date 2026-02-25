@@ -12,4 +12,13 @@ jobs:
     name: Assign author
     runs-on: ubuntu-slim
     steps:
-      - uses: technote-space/assign-author@9558557c5c4816f38bd06176fbc324ba14bb3160 # v1.6.2
+      - name: set author
+        uses: technote-space/assign-author@9558557c5c4816f38bd06176fbc324ba14bb3160 # v1.6.2
+
+      - name: comment on PRs from forks
+        if: github.event.pull_request.head.repo.full_name != github.repository && github.event.action == 'opened'
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" -R "$GITHUB_REPOSITORY" -b "We don't run CI on fork PRs except when mirrored using [this workflow](https://github.com/brave/brave-core/actions/workflows/sync-and-rebase-pr-from-fork.yml)."
